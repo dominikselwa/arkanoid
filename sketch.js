@@ -1,25 +1,21 @@
 let step = 30;
-let alfa;
-let tri = 11;
+let approxEllipse = 11;
 let angle;
 let heightBrick;
 let widthBrick;
 let brickSpeed = 0.02;
 let brickShift;
 let newBrick = 100;
-let a = 0;
 let scale;
 
-let kostka = [];
+let bricks = [];
 let count = 0;
-let kostkaLength;
 let startRows = 10;
 let powerUps = [];
 let balls = [];
 let thePad;
 let minute;
 let possibleHitPoints = [-1,1,2,3,4,5];
-let c;
 let t = [];
 let color;
 let points = 0;
@@ -27,15 +23,13 @@ let t0;
 let t1;
 let gameState = "start"; //possible: start, game, pause, gameOver
 
-
-
 class pad {
 	constructor(x,y){
 		this.x = x;
 		this.y = y;
 		this.height = 15*scale;
 		this.width = 80*scale;
-		this.speed = 5*scale;
+		this.speed = 3*scale;
 	}
 
 	draw(){
@@ -91,7 +85,7 @@ class powerUp {
 
 class doubleBall extends powerUp {
 	constructor(x,y){
-		super(x,y,a,color);
+		super(x,y,color);
 	}
 
 	action(){
@@ -157,61 +151,61 @@ class ball {
 	}
 
 	colideBrick(l){
-		for(i=0; i<kostka.length; i++) {
-			for(j=0; j<kostka[i].length; j++) {
-				if(kostka[i][j].hitPoints > 0 &&
-				abs(this.position.x - kostka[i][j].xCenter) - widthBrick - this.r < 0) {
-					//line(this.position.x,this.position.y,kostka[i][j].xCenter,kostka[i][j].yCenter);
-					if(this.position.x > kostka[i][j].x && this.position.x < kostka[i][j].x + kostka[i][j].width) {
-						if((this.position.y > kostka[i][j].y - this.r  && this.position.y < kostka[i][j].y + kostka[i][j].height + this.r)) {
+		for(i=0; i<bricks.length; i++) {
+			for(j=0; j<bricks[i].length; j++) {
+				if(bricks[i][j].hitPoints > 0 &&
+				abs(this.position.x - bricks[i][j].xCenter) - widthBrick - this.r < 0) {
+					//line(this.position.x,this.position.y,bricks[i][j].xCenter,bricks[i][j].yCenter);
+					if(this.position.x > bricks[i][j].x && this.position.x < bricks[i][j].x + bricks[i][j].width) {
+						if((this.position.y > bricks[i][j].y - this.r  && this.position.y < bricks[i][j].y + bricks[i][j].height + this.r)) {
 							this.velocity.y = (-1)*this.velocity.y;
-							kostka[i][j].hitPoints--;
+							bricks[i][j].hitPoints--;
 							addPoints(l);
 							return;
 						}
-					} else if(this.position.y > kostka[i][j].y&& this.position.y < kostka[i][j].y + kostka[i][j].height) {
-						if((this.position.x > kostka[i][j].x - this.r  && this.position.x < kostka[i][j].x + kostka[i][j].width + this.r)) {
+					} else if(this.position.y > bricks[i][j].y&& this.position.y < bricks[i][j].y + bricks[i][j].height) {
+						if((this.position.x > bricks[i][j].x - this.r  && this.position.x < bricks[i][j].x + bricks[i][j].width + this.r)) {
 							this.velocity.x = (-1)*this.velocity.x;
-							kostka[i][j].hitPoints--;
+							bricks[i][j].hitPoints--;
 							addPoints(l);
 							return;
 						}
 					} else {
-						let A = dist(kostka[i][j].x,kostka[i][j].y,this.position.x,this.position.y);
+						let A = dist(bricks[i][j].x,bricks[i][j].y,this.position.x,this.position.y);
 						if (A <= this.r) {
 							let corner = new p5.Vector(1,-1);
 							roundBounce(this.velocity,corner);
-							kostka[i][j].hitPoints--;
+							bricks[i][j].hitPoints--;
 							addPoints(l);
 							return;
 						}
-						let C = dist(kostka[i][j].x,kostka[i][j].y + kostka[i][j].height,this.position.x,this.position.y);
+						let C = dist(bricks[i][j].x,bricks[i][j].y + bricks[i][j].height,this.position.x,this.position.y);
 						if (C <= this.r) {
 							let corner = new p5.Vector(-1,-1);
 							roundBounce(this.velocity,corner);
-							kostka[i][j].hitPoints--;
+							bricks[i][j].hitPoints--;
 							addPoints(l);
 							return;
 						}
-						let B = dist(kostka[i][j].x + kostka[i][j].width,kostka[i][j].y,this.position.x,this.position.y);
+						let B = dist(bricks[i][j].x + bricks[i][j].width,bricks[i][j].y,this.position.x,this.position.y);
 						if (B <= this.r) {
 							let corner = new p5.Vector(1,1);
 							roundBounce(this.velocity,corner);
-							kostka[i][j].hitPoints--;
+							bricks[i][j].hitPoints--;
 							addPoints(l);
 							return;
 						}
-						let D = dist(kostka[i][j].x + kostka[i][j].width,kostka[i][j].y + kostka[i][j].height,this.position.x,this.position.y)
+						let D = dist(bricks[i][j].x + bricks[i][j].width,bricks[i][j].y + bricks[i][j].height,this.position.x,this.position.y)
 						if (D <= this.r) {
 							let corner = new p5.Vector(-1,1);
 							roundBounce(this.velocity,corner);
-							kostka[i][j].hitPoints--;
+							bricks[i][j].hitPoints--;
 							addPoints(l);
 							return;
 						}
 					}
 				} else {
-					kostka[i][j].spawnPowerUp();
+					bricks[i][j].spawnPowerUp();
 				}
 			}
 		}
@@ -233,7 +227,7 @@ class ball {
 			let point_number_dos;
 			let j = 0;
 
-			for(i=0; i<=PI; i += PI/tri) {
+			for(i=0; i<=PI; i += PI/approxEllipse) {
 				xvalue[j] = thePad.x+(thePad.width/2)*cos(i);
 				yvalue[j] = thePad.y-(thePad.height/2)*sin(i);
 				dvalue[j] = dist(this.position.x,this.position.y,thePad.x+(thePad.width/2)*cos(i),thePad.y-(thePad.height/2)*sin(i));
@@ -308,31 +302,10 @@ function setup() {
 	scale = width/500;
 	frameRate(30);
 	colorMode(HSB);
-	c = random(0,360-(startRows-1)*5);
-	//stroke("white");
-
 	heightBrick = height/25;
 	widthBrick = width/10;
 
-
-	thePad = new pad(width/2,height*9/10)
-	balls[0] = new ball(width/2,300,scale*0.5/step,scale*3.5/step,scale*4);
-
-    for(i=0; i<9; i++) {
-		kostka[i] = [];
-	}
-
-	for(j=0; j<startRows; j++) {
-		color = c + 5*j;
-		for(i=0; i<9; i++) {
-			if(j%2 > 0){
-				brickShift = widthBrick/4;
-			} else {
-				brickShift = 3 * widthBrick/4;
-			}
-			kostka[i][j] = new brick(i*widthBrick + brickShift,(startRows-j-1)*heightBrick,random(possibleHitPoints));
-		}
-	}
+	initializeNewGame();
 }
 
 function minuteCount(){
@@ -340,7 +313,6 @@ function minuteCount(){
 		minute = frameCount/1800;
 		possibleHitPoints.push(5+minute);
 	}
-	color = c + (startRows*5 + frameCount/(180))%360;
 }
 
 function addPoints(l){
@@ -357,7 +329,7 @@ function newBrickPosition(){
 }
 
 function bricksSpeedPosition(){
-	let l = kostka[0].length
+	let l = bricks[0].length
 	if(l>0){
 		brickSpeed = -0.01 + 3*0.01*startRows/l;
 	} else {
@@ -371,15 +343,18 @@ function draw() {
 	t0 = performance.now();
 	background(295,40,60);
 	if(gameState == "start"){
-		drawElements();
-	}else if (gameState = "game"){
+		start();
+	}else if (gameState == "game"){
 		game();
-	} else if(gameState = "pause"){
+	} else if(gameState == "pause"){
 		pause();
+	} else{
+		gameOver();
 	}
 
 	t1 = performance.now();
 	//performancePlot();
+	console.log(color);
 }
 
 function performancePlot(){
@@ -401,12 +376,12 @@ function eraseElements(){
 	if(count == 100) {
 		count = 0;
 		let hitPoints = 0;
-		for(i = 0; i<kostka.length; i++) {
-			hitPoints = hitPoints + kostka[i][0].hitPoints;
+		for(i = 0; i<bricks.length; i++) {
+			hitPoints = hitPoints + bricks[i][0].hitPoints;
 		}
 		if (hitPoints == -9){
-			for(i = 0; i<kostka.length; i++) {
-				kostka[i].shift();
+			for(i = 0; i<bricks.length; i++) {
+				bricks[i].shift();
 			}
 		}
 		for(i=0;i<powerUps.length;i++){
@@ -425,32 +400,28 @@ function eraseElements(){
 			}
 		}
 	}else if (balls[0].position.y > height){
-		fill(295,40,60,0.7);
-		rect(0,0,width,height);
-		textAlign(CENTER,CENTER);
-		textSize(50);
-		fill("black");
-		text("You lose :(",width/2+random(-1,1),height/2+random(-1,1));
+		gameOver();
 	}
 
 }
 
 function newRowOfBricks(){
 	if (newBrick >= heightBrick) {
+		color =(color + 5)%360
 		newBrickPosition();
-		let kostkaLength = kostka[0].length;
+		let bricksLength = bricks[0].length;
 		for(i=0; i<9; i++) {
-			kostka[i][kostkaLength] = new brick(i*widthBrick+brickShift,-heightBrick,random(possibleHitPoints)); //adding new bricks
+			bricks[i][bricksLength] = new brick(i*widthBrick+brickShift,-heightBrick,random(possibleHitPoints)); //adding new bricks
 		}
 		newBrick = 0;
 	}
 }
 
 function moveColideElements(){
-	for(i=0; i<kostka.length; i++) {
-			for(j=0; j<kostka[i].length; j++) {
-				if(kostka[i][j].hitPoints > 0) {
-					kostka[i][j].move();
+	for(i=0; i<bricks.length; i++) {
+			for(j=0; j<bricks[i].length; j++) {
+				if(bricks[i][j].hitPoints > 0) {
+					bricks[i][j].move();
 			}
 		}
 	}
@@ -472,11 +443,52 @@ function moveColideElements(){
 }
 
 function initializeNewGame(){
+	zeroElements();
 
+	thePad = new pad(width/2,height*9/10)
+	balls[0] = new ball(width/2,300,scale*0.5/step,scale*3.5/step,scale*4);
+
+  for(i=0; i<9; i++) {
+		bricks[i] = [];
+	}
+
+	color = random(0,360);
+
+	for(j=0; j<startRows; j++) {
+		color = (color + 5)%360;
+		for(i=0; i<9; i++) {
+			if(j%2 > 0){
+				brickShift = widthBrick/4;
+			} else {
+				brickShift = 3 * widthBrick/4;
+			}
+			bricks[i][j] = new brick(i*widthBrick + brickShift,(startRows-j-1)*heightBrick,random(possibleHitPoints));
+		}
+	}
 }
 
 function zeroElements(){
+	brickSpeed = 0.02;
+	newBrick = 100;
+	bricks = [];
+	count = 0;
+	startRows = 10;
+	powerUps = [];
+	balls = [];
+	possibleHitPoints = [-1,1,2,3,4,5];
+	t = [];
+	points = 0;
+}
 
+function start(){
+	drawElements();
+	balls[0].position.x = thePad.x;
+	balls[0].position.y = thePad.y - thePad.height/2 - balls[0].r;
+	textAlign(CENTER,CENTER);
+	textSize(24);
+	fill("black");
+	text("Press space to start",width/2,height/2);
+	text("To pause while playing press space",width/2,height/2+24);
 }
 
 function game(){
@@ -488,9 +500,8 @@ function game(){
 
 	fill(0);
 	textSize(25);
-	textAlign(LEFT);
 	textAlign(CENTER,CENTER);
-    text(points,width/2,height-15);
+  text(points,width/2,height-15);
 	eraseElements();
 }
 
@@ -507,6 +518,19 @@ function pause(){
 	text("Press space to restart",width/2,height/2);
 }
 
+function gameOver(){
+	drawElements();
+	fill(295,40,60,0.7);
+	rect(0,0,width,height);
+	textAlign(CENTER,CENTER);
+	textSize(50);
+	fill("black");
+	text("You lose :(",width/2+random(-1,1),height/2+random(-1,1));
+	textSize(24);
+	text("Press space to play again",width/2,height/2+100);
+	gameState = "gameOver";
+}
+
 function keyReleased() {
 	if (key === ' '){
 		if (gameState == "start" || gameState == "pause") {
@@ -515,6 +539,7 @@ function keyReleased() {
 			gameState = "pause";
 		} else {
 			gameState = "start";
+			initializeNewGame();
 		}
 	}
 
@@ -522,10 +547,10 @@ function keyReleased() {
 }
 
 function drawElements() {
-	for(i=0; i<kostka.length; i++) {
-		for(j=0; j<kostka[i].length; j++) {
-			if(kostka[i][j].hitPoints > 0) {
-				kostka[i][j].draw();
+	for(i=0; i<bricks.length; i++) {
+		for(j=0; j<bricks[i].length; j++) {
+			if(bricks[i][j].hitPoints > 0) {
+				bricks[i][j].draw();
 			}
 		}
 	}
