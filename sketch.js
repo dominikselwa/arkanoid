@@ -2,11 +2,10 @@ let step = 30;
 let alfa;
 let tri = 11;
 let angle;
-let k = 0;
 let heightBrick;
 let widthBrick;
 let brickSpeed = 0.02;
-let shift;
+let brickShift;
 let newBrick = 100;
 let a = 0;
 let scale;
@@ -26,50 +25,9 @@ let color;
 let points = 0;
 let t0;
 let t1;
-let p = 2;
-let start = 0;
-let initGame = 0;
+let gameState = "start"; //possible: start, game, pause, gameOver
 
-function setup() {
-	
-	createCanvas(700,500);
-	scale = width/500;
-	frameRate(30);
-	colorMode(HSB);
-	c = random(0,360-(startRows-1)*5);
-	//stroke("white");
-	
-	heightBrick = height/25;
-	widthBrick = width/10;
-	
-	
-	thePad = new pad(width/2,height*9/10)
-	balls[0] = new ball(width/2,300,scale*0.5/step,scale*3.5/step,scale*4);
-    
-    for(i=0; i<9; i++) {
-		kostka[i] = [];
-	}
-		
-	for(j=0; j<startRows; j++) {
-		color = c + 5*j;
-		for(i=0; i<9; i++) {
-			if(j%2 > 0){
-				shift = widthBrick/4;
-			} else {
-				shift = 3 * widthBrick/4;
-			}
-			kostka[i][j] = new brick(i*widthBrick + shift,(startRows-j-1)*heightBrick,random(possibleHitPoints));
-		}
-	}
-}
 
-function minuteCount(){
-	if(frameCount%1800 == 0){
-		minute = frameCount/1800;
-		possibleHitPoints.push(5+minute);
-	}
-	color = c + (startRows*5 + frameCount/(180))%360;
-}
 
 class pad {
 	constructor(x,y){
@@ -79,12 +37,12 @@ class pad {
 		this.width = 80*scale;
 		this.speed = 5*scale;
 	}
-	
+
 	draw(){
-		fill(300,100,40); 
+		fill(300,100,40);
 		ellipse(this.x,this.y,this.width,this.height);
 	}
-	
+
 	move(){
 		if (keyIsDown(LEFT_ARROW) && this.x>this.width/2) {
 			this.x -= this.speed/step;
@@ -104,18 +62,18 @@ class powerUp {
 		this.speed = 1;
 		this.color = "green";
 	}
-	
+
 	draw(){
 		fill(this.color);
 		square(this.x,this.y,this.a);
 	}
-	
+
 	move(){
 		this.y = this.y + this.speed;
 	}
-	
+
 	colide(j){
-		if(this.x >= thePad.x - this.a - thePad.width/2 
+		if(this.x >= thePad.x - this.a - thePad.width/2
 			&& this.x <= thePad.x + thePad.width/2
 			&& this.y >= thePad.y - this.a
 			&& this.y <= thePad.y){
@@ -127,18 +85,18 @@ class powerUp {
 				powerUps.splice(j,1);
 			}
 	}
-	
+
 
 }
 
 class doubleBall extends powerUp {
 	constructor(x,y){
-		super(x,y,a,color,shift);
+		super(x,y,a,color);
 	}
-	
+
 	action(){
 		let length = balls.length;
-		for(i=0;i<length;i++){	
+		for(i=0;i<length;i++){
 			balls[length+i] = new ball(balls[i].position.x,balls[i].position.y,balls[i].velocity.x,balls[i].velocity.y,balls[i].r);
 			balls[length+i].velocity.rotate(random(-0.5,0.5));
 		}
@@ -147,12 +105,12 @@ class doubleBall extends powerUp {
 
 class manyBalls extends powerUp {
 	constructor(x,y){
-		super(x,y,a,color,shift);
+		super(x,y,a,color);
 	}
-	
+
 	action(){
 		let length = balls.length;
-		for(i=0;i<length;i++){	
+		for(i=0;i<length;i++){
 			for(j=0;j<7;j++){
 				balls[length+i*j+j] = new ball(balls[i].position.x,balls[i].position.y,balls[i].velocity.x,balls[i].velocity.y,balls[i].r);
 				balls[length+i].velocity.rotate(TAU*j/7);
@@ -162,11 +120,8 @@ class manyBalls extends powerUp {
 	}
 }
 
-	
-
-
 class death extends powerUp {
-	
+
 }
 
 class ball {
@@ -176,35 +131,35 @@ class ball {
 		this.velocity = new p5.Vector(xVelocity,yVelocity);
 		this.combo = 0;
 	}
-	
+
 	draw(){
 		fill("white");
-		circle(this.position.x,this.position.y,2*this.r); 
+		circle(this.position.x,this.position.y,2*this.r);
 	}
-	
+
 	move(){
 		this.position.x = this.position.x + this.velocity.x;
 		this.position.y = this.position.y + this.velocity.y;
 	}
-	
+
 	colideWall() {
 		if (this.position.x <= 0 + this.r && this.velocity.x < 0) {
 			this.velocity.x = (-1)*this.velocity.x;
 		}
-		
+
 		if (this.position.x >= width - this.r && this.velocity.x > 0) {
 			this.velocity.x = (-1)*this.velocity.x;
 		}
-		
+
 		if (this.position.y <= this.r && this.velocity.y < 0) {
 			this.velocity.y = (-1)*this.velocity.y;
 		}
 	}
-	
+
 	colideBrick(l){
 		for(i=0; i<kostka.length; i++) {
 			for(j=0; j<kostka[i].length; j++) {
-				if(kostka[i][j].hitPoints > 0 && 
+				if(kostka[i][j].hitPoints > 0 &&
 				abs(this.position.x - kostka[i][j].xCenter) - widthBrick - this.r < 0) {
 					//line(this.position.x,this.position.y,kostka[i][j].xCenter,kostka[i][j].yCenter);
 					if(this.position.x > kostka[i][j].x && this.position.x < kostka[i][j].x + kostka[i][j].width) {
@@ -256,19 +211,19 @@ class ball {
 						}
 					}
 				} else {
-					kostka[i][j].spawnPowerUp();						
+					kostka[i][j].spawnPowerUp();
 				}
 			}
 		}
 	}
-	
+
 	colidePadNew() {
-		
+
 	}
-	
+
 	colidePad() {
 		let distance = dist(this.position.x,this.position.y,thePad.x,thePad.y);
-		
+
 		if(distance <= (thePad.width/2) + this.r && this.position.y < thePad.y && this.velocity.y > 0) {
 			let xvalue = new Array();
 			let yvalue = new Array();
@@ -277,7 +232,7 @@ class ball {
 			let point_number_uno;
 			let point_number_dos;
 			let j = 0;
-		
+
 			for(i=0; i<=PI; i += PI/tri) {
 				xvalue[j] = thePad.x+(thePad.width/2)*cos(i);
 				yvalue[j] = thePad.y-(thePad.height/2)*sin(i);
@@ -285,16 +240,16 @@ class ball {
 				dvalue_sorted[j] = dvalue[j];
 				j++;
 			}
-		
-			dvalue_sorted.sort(function(a,b){return a-b});	
-		
+
+			dvalue_sorted.sort(function(a,b){return a-b});
+
 			point_number_uno = dvalue.indexOf(dvalue_sorted[0]);
 			point_number_dos = dvalue.indexOf(dvalue_sorted[1]);
-			
+
 			if(point_number_uno == point_number_dos) {
 				point_number_dos = point_number_uno + 1;
 			}
-		
+
 			var normal = new p5.Vector(xvalue[point_number_uno]-xvalue[point_number_dos],yvalue[point_number_uno]-yvalue[point_number_dos]);
 			normal.normalize();
 			var a = new p5.Vector(xvalue[point_number_uno],yvalue[point_number_uno]);
@@ -303,18 +258,13 @@ class ball {
 			normal.mult(a_minus_p_kropka_n);
 			let dist_v = p5.Vector.sub(a_minus_p,normal);
 			let line_ball_dist = dist_v.mag();
-		
+
 			if(line_ball_dist <= this.r) {
 				roundBounce(this.velocity,normal);
 				this.combo = 0;
 			}
 		}
 	}
-}
-
-function addPoints(l){
-	points = points + 100 + 10*balls[l].combo;
-	balls[l].combo++;
 }
 
 class brick {
@@ -330,39 +280,83 @@ class brick {
 		this.xCenter = this.x + this.width/2;
 		this.yCenter = this.y + this.height/2;
 	}
-	
+
 	draw() {
 		fill(this.color,80*this.hitPoints/this.maxHitPoints,100);
 		rect(this.x,this.y,this.width,this.height);
 	}
-	
+
 	move() {
 		this.y = this.y + brickSpeed;
 		this.yCenter = this.yCenter + brickSpeed;
 	}
-	
+
 	spawnPowerUp() {
 		if(this.hitPoints == 0){
 			if(random(1,22) < 3+this.initialHitPoints){
 				let length = powerUps.length;
 				powerUps[length] =  new doubleBall(this.x,this.y);
 			}
-			this.hitPoints--; 
+			this.hitPoints--;
 		}
 	}
-}	
-
-function newBrickPosition(){
-	if(shift == widthBrick/4){
-		shift = 3 * widthBrick/4;
-	}else{
-		shift = widthBrick/4;
-	}	
-	
-	//newBrick = newBrick + brickSpeed;
 }
 
-function brickPos(){
+function setup() {
+
+	createCanvas(700,500);
+	scale = width/500;
+	frameRate(30);
+	colorMode(HSB);
+	c = random(0,360-(startRows-1)*5);
+	//stroke("white");
+
+	heightBrick = height/25;
+	widthBrick = width/10;
+
+
+	thePad = new pad(width/2,height*9/10)
+	balls[0] = new ball(width/2,300,scale*0.5/step,scale*3.5/step,scale*4);
+
+    for(i=0; i<9; i++) {
+		kostka[i] = [];
+	}
+
+	for(j=0; j<startRows; j++) {
+		color = c + 5*j;
+		for(i=0; i<9; i++) {
+			if(j%2 > 0){
+				brickShift = widthBrick/4;
+			} else {
+				brickShift = 3 * widthBrick/4;
+			}
+			kostka[i][j] = new brick(i*widthBrick + brickShift,(startRows-j-1)*heightBrick,random(possibleHitPoints));
+		}
+	}
+}
+
+function minuteCount(){
+	if(frameCount%1800 == 0){
+		minute = frameCount/1800;
+		possibleHitPoints.push(5+minute);
+	}
+	color = c + (startRows*5 + frameCount/(180))%360;
+}
+
+function addPoints(l){
+	points = points + 100 + 10*balls[l].combo;
+	balls[l].combo++;
+}
+
+function newBrickPosition(){
+	if(brickShift == widthBrick/4){
+		brickShift = 3 * widthBrick/4;
+	}else{
+		brickShift = widthBrick/4;
+	}
+}
+
+function bricksSpeedPosition(){
 	let l = kostka[0].length
 	if(l>0){
 		brickSpeed = -0.01 + 3*0.01*startRows/l;
@@ -373,19 +367,19 @@ function brickPos(){
 }
 
 function draw() {
-	
+
 	t0 = performance.now();
 	background(295,40,60);
-	if(p == 2){
-		init();
-	}else if (p == 0){
+	if(gameState == "start"){
+		drawElements();
+	}else if (gameState = "game"){
 		game();
-	} else {
-		pause();		
-	}	
-		
+	} else if(gameState = "pause"){
+		pause();
+	}
+
 	t1 = performance.now();
-	performancePlot();
+	//performancePlot();
 }
 
 function performancePlot(){
@@ -403,7 +397,7 @@ function roundBounce(ballVelocity,vec) {
 	ballVelocity.rotate(-2*ang);
 }
 
-function erase(){
+function eraseElements(){
 	if(count == 100) {
 		count = 0;
 		let hitPoints = 0;
@@ -423,7 +417,7 @@ function erase(){
 	} else {
 		count++;
 	}
-	
+
 	if(balls.length>1){
 		for(i=0;i<balls.length;i++){
 			if(balls[i].position.y > height){
@@ -438,53 +432,35 @@ function erase(){
 		fill("black");
 		text("You lose :(",width/2+random(-1,1),height/2+random(-1,1));
 	}
-	
+
 }
 
-function game(){
-		//background("black");
-	minuteCount();
-	brickPos();
-	//background(66,100,100); 
-	
-	//check if bricks need to be added
-	
-
+function newRowOfBricks(){
 	if (newBrick >= heightBrick) {
 		newBrickPosition();
 		let kostkaLength = kostka[0].length;
 		for(i=0; i<9; i++) {
-			kostka[i][kostkaLength] = new brick(i*widthBrick+shift,-heightBrick,random(possibleHitPoints)); //adding new bricks
-		}	
+			kostka[i][kostkaLength] = new brick(i*widthBrick+brickShift,-heightBrick,random(possibleHitPoints)); //adding new bricks
+		}
 		newBrick = 0;
 	}
-	
-	//drawing (bricks, pad and balls) and moving (bricks) objects (once per draw() function)
-	
+}
+
+function moveColideElements(){
 	for(i=0; i<kostka.length; i++) {
 			for(j=0; j<kostka[i].length; j++) {
 				if(kostka[i][j].hitPoints > 0) {
-					kostka[i][j].draw();
 					kostka[i][j].move();
 			}
 		}
 	}
-	
-	for(i=0; i<balls.length; i++){
-		balls[i].draw();
-	}
-	thePad.draw();
+
 	for(i=0;i<powerUps.length;i++){
-		powerUps[i].draw();
 		powerUps[i].move();
 		powerUps[i].colide(i);
 	}
-	
+
 	for(g=0;g<step;g++){
-		//colideWall();
-		//if(vB.y>0 && ballPosition.y <= thePad.y){
-		//	colidePad();
-		//}
 		for(l=0; l<balls.length; l++){
 			balls[l].colideBrick(l);
 			balls[l].colideWall();
@@ -493,43 +469,38 @@ function game(){
 		}
 		thePad.move();
 	}
-	
-	k = 0;
+}
+
+function initializeNewGame(){
+
+}
+
+function zeroElements(){
+
+}
+
+function game(){
+	minuteCount();
+	bricksSpeedPosition();
+	newRowOfBricks();
+	drawElements();
+	moveColideElements();
+
 	fill(0);
 	textSize(25);
 	textAlign(LEFT);
-	//text(t[t.length-1],0,15);
-	//text(possibleHitPoints[possibleHitPoints.length-1],0,30);
-	//text(vB.y,0,60);
 	textAlign(CENTER,CENTER);
     text(points,width/2,height-15);
-	erase();
+	eraseElements();
 }
 
 function pause(){
-	
-	
-	for(i=0; i<kostka.length; i++) {
-		for(j=0; j<kostka[i].length; j++) {
-			if(kostka[i][j].hitPoints > 0) {
-				kostka[i][j].draw();
-			}
-		}
-	}
-	
-	for(i=0; i<balls.length; i++){
-		balls[i].draw();
-	}
-	
-	thePad.draw();
-	
-	for(i=0;i<powerUps.length;i++){
-		powerUps[i].draw();
-	}
-	
+
+	drawElements();
+
 	fill(295,40,60,0.7);
 	rect(0,0,width,height);
-	
+
 	textAlign(CENTER,CENTER);
 	textSize(24);
 	fill("black");
@@ -538,21 +509,19 @@ function pause(){
 
 function keyReleased() {
 	if (key === ' '){
-		if (p > 0) {
-			p = 0;
+		if (gameState == "start" || gameState == "pause") {
+			gameState = "game";
+		} else if (gameState == "game"){
+			gameState = "pause";
 		} else {
-			p = 1;
+			gameState = "start";
 		}
 	}
-	
-	if (keyCode === UP_ARROW){
-		initGame = 1;
-	}
-	
+
   return false; // prevent any default behavior
 }
 
-function init() {
+function drawElements() {
 	for(i=0; i<kostka.length; i++) {
 		for(j=0; j<kostka[i].length; j++) {
 			if(kostka[i][j].hitPoints > 0) {
@@ -560,20 +529,18 @@ function init() {
 			}
 		}
 	}
-	
+
 	for(i=0; i<balls.length; i++){
 		balls[i].draw();
 	}
-	
+
 	thePad.draw();
-	
+
 	for(i=0;i<powerUps.length;i++){
 		powerUps[i].draw();
 	}
-	
+
 	for(g=0;g<step;g++){
-		balls[0].position.x = thePad.x;
-		balls[0].position.y = thePad.y - thePad.height/2 - balls[0].r;
 		thePad.move();
 	}
 }
