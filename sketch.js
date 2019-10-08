@@ -289,7 +289,9 @@ class brick {
 		if(this.hitPoints == 0){
 			if(random(1,22) < 3+this.initialHitPoints){
 				let length = powerUps.length;
-				powerUps[length] =  new doubleBall(this.x,this.y);
+				if(balls.length < 17){
+					powerUps[length] =  new doubleBall(this.x,this.y);
+				}
 			}
 			this.hitPoints--;
 		}
