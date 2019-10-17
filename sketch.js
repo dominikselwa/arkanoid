@@ -345,7 +345,7 @@ class brick {
 
 	spawnPowerUp() {
 		if(this.hitPoints == 0){
-			if(random(1,22) < 20+this.initialHitPoints){
+			if(random(1,22) < 4+this.initialHitPoints){
 				let length = powerUps.length;
 				if(balls.length < maxBallCount){
 					powerUps[length] =  new doubleBall(this.x,this.y);
