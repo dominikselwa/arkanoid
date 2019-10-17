@@ -7,7 +7,7 @@ let brickSpeed = 0.02;
 let brickShift;
 let newBrick = 100;
 let scale;
-
+let maxBallCount = 8;
 let bricks = [];
 let count = 0;
 let startRows = 10;
@@ -21,7 +21,17 @@ let color;
 let points = 0;
 let t0;
 let t1;
-let gameState = "start"; //possible: start, game, pause, gameOver
+let gameState = "start"; //possible: start, game, pause, gameOver, howToPlay, highScores
+let activeGame = 0;
+let lives = 3;
+
+let playButton;
+let howToPlayButton;
+let highScoresButton;
+let pauseButton;
+let mainMenuButton;
+let backButton;
+let resumeButton;
 
 class pad {
 	constructor(x,y){
@@ -59,7 +69,7 @@ class powerUp {
 
 	draw(){
 		fill(this.color);
-		square(this.x,this.y,this.a);
+		square(this.x,this.y,this.a,2);
 	}
 
 	move(){
@@ -71,11 +81,7 @@ class powerUp {
 			&& this.x <= thePad.x + thePad.width/2
 			&& this.y >= thePad.y - this.a
 			&& this.y <= thePad.y){
-				let length = balls.length;
-				for(i=0;i<length;i++){
-					balls[length+i] = new ball(balls[i].position.x,balls[i].position.y,balls[i].velocity.x,balls[i].velocity.y,balls[i].r);
-					balls[length+i].velocity.rotate(random(-0.5,0.5));
-				}
+				this.action();
 				powerUps.splice(j,1);
 			}
 	}
@@ -85,7 +91,14 @@ class powerUp {
 
 class doubleBall extends powerUp {
 	constructor(x,y){
-		super(x,y,color);
+		super(x,y);
+	}
+
+	draw(){
+		super.draw();
+		fill("white");
+		circle(this.a/2 + this.x-this.a/5,this.y+this.a/2,this.a/3);
+		circle(this.a/2 + this.x+this.a/5,this.y+this.a/2,this.a/3);
 	}
 
 	action(){
@@ -97,25 +110,60 @@ class doubleBall extends powerUp {
 	}
 }
 
-class manyBalls extends powerUp {
+class threeBalls extends powerUp {
 	constructor(x,y){
-		super(x,y,a,color);
+		super(x,y);
 	}
+
+	draw(){
+		super.draw();
+		fill("white");
+			circle(this.a/2 + this.x + this.a/5,this.a/2 + this.x + this.a/5,this.a/3);
+	}
+
 
 	action(){
 		let length = balls.length;
 		for(i=0;i<length;i++){
-			for(j=0;j<7;j++){
-				balls[length+i*j+j] = new ball(balls[i].position.x,balls[i].position.y,balls[i].velocity.x,balls[i].velocity.y,balls[i].r);
-				balls[length+i].velocity.rotate(TAU*j/7);
+			for(j=0;j<2;j++){
+				balls[length+j+i*2] = new ball(balls[i].position.x,balls[i].position.y,balls[i].velocity.x,balls[i].velocity.y,balls[i].r);
+				balls[length+j+i*2].velocity.rotate(PI*j/3);
 			}
-
 		}
 	}
 }
 
 class death extends powerUp {
 
+}
+
+class button {
+	constructor(x,y,w,h,text,page){
+		this.x = x;
+		this.y = y;
+		this.width = w;
+		this.height = h;
+		this.text = text;
+		this.page = page;
+	}
+
+	draw(){
+		strokeWeight(4);
+		fill(0,0,100,0.5);
+		rect(this.x-this.width/2,this.y-this.height/2,this.width,this.height,5);
+		fill("black");
+		textAlign(CENTER,CENTER);
+		textSize(this.height-10);
+		text(this.text,this.x,this.y);
+	}
+
+	click(){
+		if (mouseButton === LEFT) {
+			if(mouseX > this.x - this.width/2 && mouseX < this.x + this.width/2 && mouseY > this.y - this.height/2 && mouseY < this.y + this.height/2){
+				this.page();
+			}
+		}
+	}
 }
 
 class ball {
@@ -132,6 +180,21 @@ class ball {
 	}
 
 	move(){
+		if(abs(this.velocity.y) < 0.15 * this.velocity.mag()){
+			if(this.velocity.y >= 0){
+				if(this.velocity.x >= 0){
+					this.velocity.rotate(0.01);
+				} else {
+					this.velocity.rotate(-0.01);
+				}
+			} else{
+				if(this.velocity.x >= 0){
+					this.velocity.rotate(-0.01);
+				} else {
+					this.velocity.rotate(0.01);
+				}
+			}
+		}
 		this.position.x = this.position.x + this.velocity.x;
 		this.position.y = this.position.y + this.velocity.y;
 	}
@@ -155,7 +218,6 @@ class ball {
 			for(j=0; j<bricks[i].length; j++) {
 				if(bricks[i][j].hitPoints > 0 &&
 				abs(this.position.x - bricks[i][j].xCenter) - widthBrick - this.r < 0) {
-					//line(this.position.x,this.position.y,bricks[i][j].xCenter,bricks[i][j].yCenter);
 					if(this.position.x > bricks[i][j].x && this.position.x < bricks[i][j].x + bricks[i][j].width) {
 						if((this.position.y > bricks[i][j].y - this.r  && this.position.y < bricks[i][j].y + bricks[i][j].height + this.r)) {
 							this.velocity.y = (-1)*this.velocity.y;
@@ -209,10 +271,6 @@ class ball {
 				}
 			}
 		}
-	}
-
-	colidePadNew() {
-
 	}
 
 	colidePad() {
@@ -277,7 +335,7 @@ class brick {
 
 	draw() {
 		fill(this.color,80*this.hitPoints/this.maxHitPoints,100);
-		rect(this.x,this.y,this.width,this.height);
+		rect(this.x,this.y,this.width,this.height,2);
 	}
 
 	move() {
@@ -287,9 +345,9 @@ class brick {
 
 	spawnPowerUp() {
 		if(this.hitPoints == 0){
-			if(random(1,22) < 3+this.initialHitPoints){
+			if(random(1,22) < 20+this.initialHitPoints){
 				let length = powerUps.length;
-				if(balls.length < 17){
+				if(balls.length < maxBallCount){
 					powerUps[length] =  new doubleBall(this.x,this.y);
 				}
 			}
@@ -306,9 +364,152 @@ function setup() {
 	colorMode(HSB);
 	heightBrick = height/25;
 	widthBrick = width/10;
+	textStyle(BOLD);
+
+	playButton = new button(width/2,height/2 - 75,300,50,"Play",game);
+	howToPlayButton = new button(width/2,height/2,300,50,"How To Play",howToPlay);
+	highScoresButton = new button(width/2,height/2 + 75,300,50,"High Scores",highScores);
+	pauseButton = new button(width*0.975,height*0.035,width*0.042,height*0.06,"",pause);
+	mainMenuButton = new button(width*0.05,height*0.035,width*0.096,height*0.06,"Menu",start);
+	backButton = new button(width*0.025,height*0.035,width*0.042,height*0.06,"",start);
+	resumeButton = new button(width*0.975,height*0.035,width*0.042,height*0.06,"",game);
 
 	initializeNewGame();
 }
+
+function draw() {
+	strokeWeight(2);
+	t0 = performance.now();
+	background(295,40,60);
+	if(gameState == "start"){
+		start();
+	}else if (gameState == "game"){
+		game();
+	} else if(gameState == "pause"){
+		pause();
+	} else if(gameState == "gameOver"){
+		gameOver();
+	}  else if(gameState == "howToPlay"){
+		howToPlay();
+	}  else {
+		highScores();
+	}
+
+	t1 = performance.now();
+	//performancePlot();
+	console.log(balls.length);
+}
+
+//GAME STATES
+
+function start(){
+	if(gameState === "gameOver"){
+		initializeNewGame();
+	}
+	gameState = "start";
+	drawElements();
+	if (activeGame == 0){
+		playButton.text = "Play";
+		balls[0].position.x = thePad.x;
+		balls[0].position.y = thePad.y - thePad.height/2 - balls[0].r;
+	} else {
+		playButton.text = "Resume";
+	}
+	blur();
+	playButton.draw();
+	howToPlayButton.draw();
+	highScoresButton.draw();
+}
+
+function game(){
+	if(gameState == "gameOver"){
+		initializeNewGame();
+		balls[0].position.x = thePad.x;
+		balls[0].position.y = thePad.y - thePad.height/2 - balls[0].r;
+	}
+	activeGame = 1;
+	gameState = "game";
+
+
+
+	minuteCount();
+	bricksSpeedPosition();
+	newRowOfBricks();
+	drawElements();
+	moveColideElements();
+
+	fill(0);
+	textSize(25);
+	textAlign(CENTER,CENTER);
+  text(points,width/2,height-15);
+	pauseButton.draw();
+	strokeWeight(4);
+	line(pauseButton.x-pauseButton.width/6,pauseButton.y-pauseButton.height/4,pauseButton.x-pauseButton.width/6,pauseButton.y+pauseButton.height/4);
+	line(pauseButton.x+pauseButton.width/6,pauseButton.y-pauseButton.height/4,pauseButton.x+pauseButton.width/6,pauseButton.y+pauseButton.height/4);
+	eraseElements();
+}
+
+function pause(){
+	gameState = "pause";
+	drawElements();
+	blur();
+
+
+	textAlign(CENTER,CENTER);
+	textSize(24);
+	fill("black");
+	text("Press space to resume",width/2,height/2);
+
+	resumeButton.draw();
+	mainMenuButton.draw();
+	fill("black");
+	strokeWeight(4);
+	triangle(resumeButton.x-resumeButton.width/6,resumeButton.y-resumeButton.height/4,resumeButton.x-resumeButton.width/6,resumeButton.y+resumeButton.height/4,resumeButton.x+resumeButton.width/6,resumeButton.y);
+
+
+}
+
+function gameOver(){
+	activeGame =0;
+	gameState = "gameOver";
+	drawElements();
+	blur();
+	textAlign(CENTER,CENTER);
+	textSize(50);
+	fill("black");
+	text("You lose :(",width/2+random(-1,1),height/2-150+random(-1,1));
+	mainMenuButton.draw();
+	playButton.text = "Play again";
+	playButton.draw();
+}
+
+function howToPlay(){
+	gameState = "howToPlay";
+	drawElements();
+	blur();
+	fill("black");
+	textAlign(CENTER,CENTER);
+	textSize(24);
+	text("To move the pad use arrows on your keyboard",width/2,height/2 - 50);
+	text("Try to catch as many good power ups as you can and avoid bad ones",0,height/2,width);
+	text("You can pause the game using space bar",width/2,height/2 + 75);
+	backButton.draw();
+	fill("black");
+	strokeWeight(4);
+	triangle(backButton.x+backButton.width/6,backButton.y-backButton.height/4,backButton.x+backButton.width/6,backButton.y+backButton.height/4,backButton.x-backButton.width/6,backButton.y);
+}
+
+function highScores(){
+	gameState = "highScores";
+	drawElements();
+	blur();
+	backButton.draw();
+	fill("black");
+	strokeWeight(4);
+	triangle(backButton.x+backButton.width/6,backButton.y-backButton.height/4,backButton.x+backButton.width/6,backButton.y+backButton.height/4,backButton.x-backButton.width/6,backButton.y);
+}
+
+//FUNCTIONS
 
 function minuteCount(){
 	if(frameCount%1800 == 0){
@@ -340,23 +541,22 @@ function bricksSpeedPosition(){
 	newBrick = newBrick + brickSpeed;
 }
 
-function draw() {
-
-	t0 = performance.now();
-	background(295,40,60);
-	if(gameState == "start"){
-		start();
-	}else if (gameState == "game"){
-		game();
-	} else if(gameState == "pause"){
-		pause();
-	} else{
-		gameOver();
+function mouseClicked(){
+	if(gameState === "start"){
+		playButton.click();
+		howToPlayButton.click();
+		highScoresButton.click();
+	} else if(gameState === "game"){
+		pauseButton.click();
+	} else if(gameState === "gameOver"){
+		mainMenuButton.click();
+		playButton.click();
+	} else if(gameState === "pause"){
+		resumeButton.click();
+		mainMenuButton.click();
+	}else{
+		backButton.click();
 	}
-
-	t1 = performance.now();
-	//performancePlot();
-	console.log(color);
 }
 
 function performancePlot(){
@@ -448,7 +648,8 @@ function initializeNewGame(){
 	zeroElements();
 
 	thePad = new pad(width/2,height*9/10)
-	balls[0] = new ball(width/2,300,scale*0.5/step,scale*3.5/step,scale*4);
+	balls[0] = new ball(width/2,300,0,scale*4/step,scale*4);
+	balls[0].velocity.rotate(random(-0.5,0.5));
 
   for(i=0; i<9; i++) {
 		bricks[i] = [];
@@ -482,69 +683,14 @@ function zeroElements(){
 	points = 0;
 }
 
-function start(){
-	drawElements();
-	balls[0].position.x = thePad.x;
-	balls[0].position.y = thePad.y - thePad.height/2 - balls[0].r;
-	textAlign(CENTER,CENTER);
-	textSize(24);
-	fill("black");
-	text("Press space to start",width/2,height/2);
-	text("To pause while playing press space",width/2,height/2+24);
-}
-
-function game(){
-	minuteCount();
-	bricksSpeedPosition();
-	newRowOfBricks();
-	drawElements();
-	moveColideElements();
-
-	fill(0);
-	textSize(25);
-	textAlign(CENTER,CENTER);
-  text(points,width/2,height-15);
-	eraseElements();
-}
-
-function pause(){
-
-	drawElements();
-
-	fill(295,40,60,0.7);
-	rect(0,0,width,height);
-
-	textAlign(CENTER,CENTER);
-	textSize(24);
-	fill("black");
-	text("Press space to restart",width/2,height/2);
-}
-
-function gameOver(){
-	drawElements();
-	fill(295,40,60,0.7);
-	rect(0,0,width,height);
-	textAlign(CENTER,CENTER);
-	textSize(50);
-	fill("black");
-	text("You lose :(",width/2+random(-1,1),height/2+random(-1,1));
-	textSize(24);
-	text("Press space to play again",width/2,height/2+100);
-	gameState = "gameOver";
-}
-
 function keyReleased() {
 	if (key === ' '){
-		if (gameState == "start" || gameState == "pause") {
+		if (gameState == "pause") {
 			gameState = "game";
 		} else if (gameState == "game"){
 			gameState = "pause";
-		} else {
-			gameState = "start";
-			initializeNewGame();
 		}
 	}
-
   return false; // prevent any default behavior
 }
 
@@ -570,4 +716,9 @@ function drawElements() {
 	for(g=0;g<step;g++){
 		thePad.move();
 	}
+}
+
+function blur() {
+	fill(295,60,60,0.8);
+	rect(0,0,width,height);
 }
