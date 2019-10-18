@@ -24,6 +24,7 @@ let t1;
 let gameState = "start"; //possible: start, game, pause, gameOver, howToPlay, highScores
 let activeGame = 0;
 let lives = 3;
+let startUp = 45;
 
 let playButton;
 let howToPlayButton;
@@ -39,7 +40,7 @@ class pad {
 		this.y = y;
 		this.height = 15*scale;
 		this.width = 80*scale;
-		this.speed = 3*scale;
+		this.speed = 3.1*scale;
 	}
 
 	draw(){
@@ -89,6 +90,22 @@ class powerUp {
 
 }
 
+class badPowerUp extends powerUp {
+	constructor(x,y){
+		super(x,y);
+		this.color = "red";
+	}
+
+	move(){
+		super.move();
+		if(this.x +this.a/2 - 5 > thePad.x){
+			this.x -= this.speed/2;
+		} else if(this.x +this.a/2 + 5 < thePad.x){
+			this.x += this.speed/2;
+		}
+	}
+}
+
 class doubleBall extends powerUp {
 	constructor(x,y){
 		super(x,y);
@@ -118,22 +135,89 @@ class threeBalls extends powerUp {
 	draw(){
 		super.draw();
 		fill("white");
-			circle(this.a/2 + this.x + this.a/5,this.a/2 + this.x + this.a/5,this.a/3);
+		circle(this.a/2 + this.x,this.y+this.a*1/3,this.a/3);
+		circle(this.a/2 + this.x-this.a/5,this.y+this.a*2/3,this.a/3);
+		circle(this.a/2 + this.x+this.a/5,this.y+this.a*2/3,this.a/3);
 	}
-
 
 	action(){
 		let length = balls.length;
 		for(i=0;i<length;i++){
 			for(j=0;j<2;j++){
 				balls[length+j+i*2] = new ball(balls[i].position.x,balls[i].position.y,balls[i].velocity.x,balls[i].velocity.y,balls[i].r);
-				balls[length+j+i*2].velocity.rotate(PI*j/3);
+				balls[length+j+i*2].velocity.rotate(PI*2/3*(j+1));
 			}
 		}
 	}
 }
 
-class death extends powerUp {
+class largePad extends powerUp {
+	constructor(x,y){
+		super(x,y);
+		this.color = "green";
+	}
+
+	draw(){
+		super.draw();
+		fill("white");
+		ellipse(this.a/2 + this.x,this.y+this.a/2,this.a*3/4,this.a/4);
+	}
+
+	action(){
+		thePad.width += 20;
+	}
+}
+
+class smallPad extends badPowerUp {
+	constructor(x,y){
+		super(x,y);
+	}
+
+	draw(){
+		super.draw();
+		fill("white");
+		ellipse(this.a/2 + this.x,this.y+this.a/2,this.a*3/4,this.a/4);
+	}
+
+	action(){
+		thePad.width -= 20;
+	}
+}
+
+class deathPowerUp extends badPowerUp {
+	constructor(x,y){
+		super(x,y);
+	}
+
+	draw(){
+		super.draw();
+		drawHeart(this.a/2 + this.x,this.a/2 + this.y);
+	}
+
+	action(){
+		lives--;
+		if(lives <= 0){
+			gameOver();
+		}
+	}
+}
+
+class lifePowerUp extends powerUp {
+	constructor(x,y){
+		super(x,y);
+	}
+
+	draw(){
+		super.draw();
+		drawHeart(this.a/2 + this.x,this.a/2 + this.y);
+	}
+
+	action(){
+		lives++;
+	}
+}
+
+class fireBall extends powerUp {
 
 }
 
@@ -345,11 +429,8 @@ class brick {
 
 	spawnPowerUp() {
 		if(this.hitPoints == 0){
-			if(random(1,22) < 4+this.initialHitPoints){
-				let length = powerUps.length;
-				if(balls.length < maxBallCount){
-					powerUps[length] =  new doubleBall(this.x,this.y);
-				}
+			if(random(1,22) < 5+this.initialHitPoints){
+				randomPowerUp(this.x,this.y,powerUps.length);
 			}
 			this.hitPoints--;
 		}
@@ -365,6 +446,7 @@ function setup() {
 	heightBrick = height/25;
 	widthBrick = width/10;
 	textStyle(BOLD);
+	strokeJoin(ROUND);
 
 	playButton = new button(width/2,height/2 - 75,300,50,"Play",game);
 	howToPlayButton = new button(width/2,height/2,300,50,"How To Play",howToPlay);
@@ -375,6 +457,11 @@ function setup() {
 	resumeButton = new button(width*0.975,height*0.035,width*0.042,height*0.06,"",game);
 
 	initializeNewGame();
+
+	//powerUps[0] = new deathPowerUp(300,300);
+	//powerUps[1] = new deathPowerUp(300,300);
+	//powerUps[2] = new deathPowerUp(300,300);
+	//powerUps[3] = new deathPowerUp(300,300);
 }
 
 function draw() {
@@ -422,21 +509,35 @@ function start(){
 }
 
 function game(){
+	if(lives <= 0){
+		gameOver();
+	}
+
 	if(gameState == "gameOver"){
 		initializeNewGame();
 		balls[0].position.x = thePad.x;
 		balls[0].position.y = thePad.y - thePad.height/2 - balls[0].r;
+		startUp = 45;
 	}
 	activeGame = 1;
 	gameState = "game";
 
-
-
-	minuteCount();
-	bricksSpeedPosition();
-	newRowOfBricks();
 	drawElements();
-	moveColideElements();
+
+	if(startUp > 1){
+		startUp--;
+		fill("black");
+		textSize( 75 - 2*((startUp)%15));
+		textAlign(CENTER,CENTER);
+	  text(ceil(startUp/15),width/2,height/2);
+		balls[0].position.x = thePad.x;
+		balls[0].position.y = thePad.y - thePad.height/2 - balls[0].r;
+	} else {
+		minuteCount();
+		bricksSpeedPosition();
+		newRowOfBricks();
+		moveColideElements();
+	}
 
 	fill(0);
 	textSize(25);
@@ -470,17 +571,22 @@ function pause(){
 }
 
 function gameOver(){
-	activeGame =0;
-	gameState = "gameOver";
-	drawElements();
-	blur();
-	textAlign(CENTER,CENTER);
-	textSize(50);
-	fill("black");
-	text("You lose :(",width/2+random(-1,1),height/2-150+random(-1,1));
-	mainMenuButton.draw();
-	playButton.text = "Play again";
-	playButton.draw();
+	if(lives <= 0){
+		activeGame =0;
+		gameState = "gameOver";
+		drawElements();
+		blur();
+		textAlign(CENTER,CENTER);
+		textSize(50);
+		fill("black");
+		text("You lose :(",width/2+random(-1,1),height/2-150+random(-1,1));
+		mainMenuButton.draw();
+		playButton.text = "Play again";
+		playButton.draw();
+	} else {
+		startUp = 45;
+		game();
+	}
 }
 
 function howToPlay(){
@@ -534,9 +640,9 @@ function newBrickPosition(){
 function bricksSpeedPosition(){
 	let l = bricks[0].length
 	if(l>0){
-		brickSpeed = -0.01 + 3*0.01*startRows/l;
+		brickSpeed = 0.04*startRows/l;
 	} else {
-		brickSpeed = 0.31;
+		brickSpeed = 0.5;
 	}
 	newBrick = newBrick + brickSpeed;
 }
@@ -602,6 +708,7 @@ function eraseElements(){
 			}
 		}
 	}else if (balls[0].position.y > height){
+		lives--;
 		gameOver();
 	}
 
@@ -648,7 +755,7 @@ function initializeNewGame(){
 	zeroElements();
 
 	thePad = new pad(width/2,height*9/10)
-	balls[0] = new ball(width/2,300,0,scale*4/step,scale*4);
+	balls[0] = new ball(width/2,300,0,scale*4.2/step,scale*4);
 	balls[0].velocity.rotate(random(-0.5,0.5));
 
   for(i=0; i<9; i++) {
@@ -681,6 +788,7 @@ function zeroElements(){
 	possibleHitPoints = [-1,1,2,3,4,5];
 	t = [];
 	points = 0;
+	lives = 3;
 }
 
 function keyReleased() {
@@ -713,6 +821,10 @@ function drawElements() {
 		powerUps[i].draw();
 	}
 
+	for(i = 0; i < lives; i++){
+		drawHeart(15+20*i,height - 15);
+	}
+
 	for(g=0;g<step;g++){
 		thePad.move();
 	}
@@ -721,4 +833,55 @@ function drawElements() {
 function blur() {
 	fill(295,60,60,0.8);
 	rect(0,0,width,height);
+}
+
+function randomPowerUp(x,y,length) {
+	let doubleBallCap = 25;
+	let threeBallsCap = doubleBallCap + 25;
+	let largePadCap =  threeBallsCap + 20;
+	let smallPadCap = largePadCap + 30;
+	let deathPowerUpCap = smallPadCap + 25;
+	let lifePowerUpCap = deathPowerUpCap + 10;
+
+	let randomNumber = random(lifePowerUpCap);
+	if(balls.length > maxBallCount && randomNumber < 50){
+		randomNumber = random(threeBallsCap,lifePowerUpCap);
+	}
+
+	if(thePad.width >= 160*scale && randomNumber >= threeBallsCap && randomNumber < largePadCap){
+		randomNumber += 25;
+	} else if(thePad.width <= 40*scale && randomNumber >= largePadCap && randomNumber < smallPadCap){
+		randomNumber -= 25;
+	}
+
+	if(randomNumber < doubleBallCap){
+		powerUps[length] =  new doubleBall(x,y);
+	} else if(randomNumber < threeBallsCap){
+		powerUps[length] =  new threeBalls(x,y);
+	} else if(randomNumber < largePadCap){
+		powerUps[length] =  new largePad(x,y);
+	} else if(randomNumber < smallPadCap){
+		powerUps[length] =  new smallPad(x,y);
+	} else if(randomNumber < deathPowerUpCap){
+		powerUps[length] =  new deathPowerUp(x,y);
+	} else {
+		powerUps[length] =  new lifePowerUp(x,y);
+	}
+}
+
+function drawHeart(middleX,middleY){
+	fill(0,100,60);
+	let A = new p5.Vector(0, -4.5);
+	let B = new p5.Vector(4.7, -13.3);
+	let C = new p5.Vector(14.4, -2.3);
+	let D = new p5.Vector(4, 3.3);
+	let E = new p5.Vector(0, 6.7);
+	beginShape();
+	vertex(middleX,middleY + A.y);
+	bezierVertex(middleX + B.x, middleY + B.y, middleX + C.x, middleY + C.y,middleX + D.x,middleY + D.y);
+	vertex(middleX + D.x,middleY + D.y);
+	vertex(middleX,middleY + E.y);
+	vertex(middleX - D.x,middleY + D.y);
+	bezierVertex(middleX - C.x,middleY + C.y,middleX - B.x,middleY + B.y,middleX,middleY + A.y);
+	endShape();
 }
