@@ -25,6 +25,7 @@ let gameState = "start"; //possible: start, game, pause, gameOver, howToPlay, hi
 let activeGame = 0;
 let lives = 3;
 let startUp = 45;
+let particles = [];
 
 let playButton;
 let howToPlayButton;
@@ -49,11 +50,13 @@ class pad {
 	}
 
 	move(){
-		if (keyIsDown(LEFT_ARROW) && this.x>this.width/2) {
-			this.x -= this.speed/step;
-		}
-		if (keyIsDown(RIGHT_ARROW) && this.x<width-this.width/2) {
-			this.x += this.speed/step;
+		if(gameState == "game"){
+			if (keyIsDown(LEFT_ARROW) && this.x>this.width/2) {
+				this.x -= this.speed/step;
+			}
+			if (keyIsDown(RIGHT_ARROW) && this.x<width-this.width/2) {
+				this.x += this.speed/step;
+			}
 		}
 	}
 }
@@ -84,6 +87,7 @@ class powerUp {
 			&& this.y <= thePad.y){
 				this.action();
 				powerUps.splice(j,1);
+				points += 100;
 			}
 	}
 
@@ -121,7 +125,7 @@ class doubleBall extends powerUp {
 	action(){
 		let length = balls.length;
 		for(i=0;i<length;i++){
-			balls[length+i] = new ball(balls[i].position.x,balls[i].position.y,balls[i].velocity.x,balls[i].velocity.y,balls[i].r);
+			balls[length+i] = new ball(balls[i].position.x,balls[i].position.y,balls[i].velocity.x,balls[i].velocity.y,balls[i].r,round(balls[i].fireOrIce/2));
 			balls[length+i].velocity.rotate(random(-0.5,0.5));
 		}
 	}
@@ -144,7 +148,7 @@ class threeBalls extends powerUp {
 		let length = balls.length;
 		for(i=0;i<length;i++){
 			for(j=0;j<2;j++){
-				balls[length+j+i*2] = new ball(balls[i].position.x,balls[i].position.y,balls[i].velocity.x,balls[i].velocity.y,balls[i].r);
+				balls[length+j+i*2] = new ball(balls[i].position.x,balls[i].position.y,balls[i].velocity.x,balls[i].velocity.y,balls[i].r,round(balls[i].fireOrIce/3));
 				balls[length+j+i*2].velocity.rotate(PI*2/3*(j+1));
 			}
 		}
@@ -218,7 +222,51 @@ class lifePowerUp extends powerUp {
 }
 
 class fireBall extends powerUp {
+	constructor(x,y){
+		super(x,y);
+		this.color = [47,100,100];
+		this.particles = [];
+		for(this.i = 0; this.i < 100; this.i++){
+			this.particles[this.i] = new particle();
+		}
+	}
 
+	draw(){
+		super.draw();
+		for(j = 0; j < 100; j++){
+			this.particles[j].draw(this.x + this.a/2,this.y + this.a/2,0);
+		}
+	}
+
+	action(){
+		for(i = 0; i < balls.length; i++){
+			balls[i].fireOrIce += 1200;
+		}
+	}
+}
+
+class iceBall extends powerUp {
+	constructor(x,y){
+		super(x,y);
+		this.color = [190,100,100];
+		this.particles = [];
+		for(this.i = 0; this.i < 100; this.i++){
+			this.particles[this.i] = new particle();
+		}
+	}
+
+	draw(){
+		super.draw();
+		for(j = 0; j < 100; j++){
+			this.particles[j].draw(this.x + this.a/2,this.y + this.a/2,180);
+		}
+	}
+
+	action(){
+		for(i = 0; i < balls.length; i++){
+			balls[i].fireOrIce -= 1200;
+		}
+	}
 }
 
 class button {
@@ -251,16 +299,36 @@ class button {
 }
 
 class ball {
-	constructor(x,y,xVelocity,yVelocity,r){
+	constructor(x,y,xVelocity,yVelocity,r,fireOrIce){
 		this.position = new p5.Vector(x,y);
 		this.r = r;
 		this.velocity = new p5.Vector(xVelocity,yVelocity);
 		this.combo = 0;
+		this.fireOrIce = fireOrIce;
+		this.particles = [];
+		for(this.i = 0; this.i < 100; this.i++){
+			this.particles[this.i] = new particle();
+		}
 	}
 
 	draw(){
 		fill("white");
 		circle(this.position.x,this.position.y,2*this.r);
+		if(this.fireOrIce > 0){
+			for(j = 0; j < 100; j++){
+				this.particles[j].draw(this.position.x,this.position.y,0);
+			}
+			if(gameState == "game"){
+							this.fireOrIce--;
+			}
+		} else if (this.fireOrIce < 0) {
+			for(j = 0; j < 100; j++){
+				this.particles[j].draw(this.position.x,this.position.y,180);
+			}
+			if(gameState == "game"){
+							this.fireOrIce++;
+			}
+		}
 	}
 
 	move(){
@@ -305,14 +373,14 @@ class ball {
 					if(this.position.x > bricks[i][j].x && this.position.x < bricks[i][j].x + bricks[i][j].width) {
 						if((this.position.y > bricks[i][j].y - this.r  && this.position.y < bricks[i][j].y + bricks[i][j].height + this.r)) {
 							this.velocity.y = (-1)*this.velocity.y;
-							bricks[i][j].hitPoints--;
+							this.colideBrickMode();
 							addPoints(l);
 							return;
 						}
 					} else if(this.position.y > bricks[i][j].y&& this.position.y < bricks[i][j].y + bricks[i][j].height) {
 						if((this.position.x > bricks[i][j].x - this.r  && this.position.x < bricks[i][j].x + bricks[i][j].width + this.r)) {
 							this.velocity.x = (-1)*this.velocity.x;
-							bricks[i][j].hitPoints--;
+							this.colideBrickMode();
 							addPoints(l);
 							return;
 						}
@@ -321,7 +389,7 @@ class ball {
 						if (A <= this.r) {
 							let corner = new p5.Vector(1,-1);
 							roundBounce(this.velocity,corner);
-							bricks[i][j].hitPoints--;
+							this.colideBrickMode();
 							addPoints(l);
 							return;
 						}
@@ -329,7 +397,7 @@ class ball {
 						if (C <= this.r) {
 							let corner = new p5.Vector(-1,-1);
 							roundBounce(this.velocity,corner);
-							bricks[i][j].hitPoints--;
+							this.colideBrickMode();
 							addPoints(l);
 							return;
 						}
@@ -337,7 +405,7 @@ class ball {
 						if (B <= this.r) {
 							let corner = new p5.Vector(1,1);
 							roundBounce(this.velocity,corner);
-							bricks[i][j].hitPoints--;
+							this.colideBrickMode();
 							addPoints(l);
 							return;
 						}
@@ -345,7 +413,7 @@ class ball {
 						if (D <= this.r) {
 							let corner = new p5.Vector(-1,1);
 							roundBounce(this.velocity,corner);
-							bricks[i][j].hitPoints--;
+							this.colideBrickMode();
 							addPoints(l);
 							return;
 						}
@@ -353,6 +421,21 @@ class ball {
 				} else {
 					bricks[i][j].spawnPowerUp();
 				}
+			}
+		}
+	}
+
+	colideBrickMode() {
+		if (this.fireOrIce == 0){
+			bricks[i][j].hitPoints--;
+		} else 	if(this.fireOrIce > 0){
+			bricks[i][j].hitPoints = 0;
+		} else if (this.fireOrIce < 0) {
+			if(bricks[i][j].hitPoints > 1){
+				bricks[i][j].isFrozen = 1;
+				bricks[i][j].hitPoints = 1;
+			} else{
+				bricks[i][j].hitPoints--;
 			}
 		}
 	}
@@ -415,10 +498,15 @@ class brick {
 		this.color = color;
 		this.xCenter = this.x + this.width/2;
 		this.yCenter = this.y + this.height/2;
+		this.isFrozen = 0;
 	}
 
 	draw() {
-		fill(this.color,80*this.hitPoints/this.maxHitPoints,100);
+		if(this.isFrozen == 0){
+			fill(this.color,80*this.hitPoints/this.maxHitPoints,100);
+		} else {
+			fill(191,100,100,0.3);
+		}
 		rect(this.x,this.y,this.width,this.height,2);
 	}
 
@@ -434,6 +522,53 @@ class brick {
 			}
 			this.hitPoints--;
 		}
+	}
+}
+
+class particle {
+	constructor(){
+		this.distance = random(-10,10);
+		this.x = random(-10,10);
+		if(this.distance > 0){
+			this.y = sqrt(this.distance*this.distance - this.x*this.x);
+		} else {
+			this.y = -sqrt(this.distance*this.distance - this.x*this.x);
+		}
+		this.color = random(10,50);
+		this.alpha = random(0.15,0.4);
+		this.r = random(4,4 + 20/((abs(this.x)+abs(this.y))+1));
+		this.beta = random(TAU);
+		this.gamma = random(TAU);
+	}
+
+	draw(x,y,yellowOrBlue){
+		strokeWeight(0);
+		fill(this.color + yellowOrBlue + 10*sin(this.beta),100,100,this.alpha + 0.04*sin(this.beta));
+		circle(this.x + x + 3*sin(this.beta),this.y + y + 3*sin(this.gamma),this.r + 5*sin(this.beta + this.gamma));
+		strokeWeight(2);
+		this.beta += 0.1 + random(-0.02,0.02);
+		this.gamma += 0.1 + random(-0.02,0.02);
+	}
+}
+
+class backgroundParticle {
+	constructor(){
+		this.x = random(width);
+		this.y = random(height);
+		this.color = random(360);
+		this.alpha = random(0.05,0.08);
+		this.r = random(50,200);
+		this.beta = random(TAU);
+		this.gamma = random(TAU);
+	}
+
+	draw(){
+		strokeWeight(0);
+		fill(this.color + 60*sin(this.beta),80,100,this.alpha + 0.04*sin(this.beta));
+		circle(this.x + 50*sin(this.beta),this.y + 50*sin(this.gamma),this.r + 50*sin(this.beta));
+		strokeWeight(2);
+		this.beta += 0.002;
+		this.gamma += 0.002;
 	}
 }
 
@@ -458,16 +593,17 @@ function setup() {
 
 	initializeNewGame();
 
-	//powerUps[0] = new deathPowerUp(300,300);
-	//powerUps[1] = new deathPowerUp(300,300);
-	//powerUps[2] = new deathPowerUp(300,300);
-	//powerUps[3] = new deathPowerUp(300,300);
+	for(i = 0; i < 200; i++){
+		particles[i] = new backgroundParticle();
+	}
+
 }
 
 function draw() {
 	strokeWeight(2);
 	t0 = performance.now();
-	background(295,40,60);
+	//background(295,40,60);
+	background(color,20,100);
 	if(gameState == "start"){
 		start();
 	}else if (gameState == "game"){
@@ -485,6 +621,9 @@ function draw() {
 	t1 = performance.now();
 	//performancePlot();
 	console.log(balls.length);
+
+
+
 }
 
 //GAME STATES
@@ -625,7 +764,7 @@ function minuteCount(){
 }
 
 function addPoints(l){
-	points = points + 100 + 10*balls[l].combo;
+	points = points + 10 + 1*balls[l].combo;
 	balls[l].combo++;
 }
 
@@ -640,9 +779,9 @@ function newBrickPosition(){
 function bricksSpeedPosition(){
 	let l = bricks[0].length
 	if(l>0){
-		brickSpeed = 0.04*startRows/l;
+		brickSpeed = - 0.0225 + 0.045*startRows/l;
 	} else {
-		brickSpeed = 0.5;
+		brickSpeed = 0.6;
 	}
 	newBrick = newBrick + brickSpeed;
 }
@@ -755,7 +894,7 @@ function initializeNewGame(){
 	zeroElements();
 
 	thePad = new pad(width/2,height*9/10)
-	balls[0] = new ball(width/2,300,0,scale*4.2/step,scale*4);
+	balls[0] = new ball(width/2,300,0,scale*4.2/step,scale*4,0);
 	balls[0].velocity.rotate(random(-0.5,0.5));
 
   for(i=0; i<9; i++) {
@@ -803,6 +942,11 @@ function keyReleased() {
 }
 
 function drawElements() {
+	for(i = 0; i < particles.length; i++){
+		particles[i].draw();
+	}
+
+
 	for(i=0; i<bricks.length; i++) {
 		for(j=0; j<bricks[i].length; j++) {
 			if(bricks[i][j].hitPoints > 0) {
@@ -831,8 +975,12 @@ function drawElements() {
 }
 
 function blur() {
-	fill(295,60,60,0.8);
+	//fill(295,60,80,0.3);
+	fill(color,60,50,0.3);
 	rect(0,0,width,height);
+	//for(i = 0; i < particles.length; i++){
+	//	particles[i].draw();
+	//}
 }
 
 function randomPowerUp(x,y,length) {
@@ -842,10 +990,12 @@ function randomPowerUp(x,y,length) {
 	let smallPadCap = largePadCap + 30;
 	let deathPowerUpCap = smallPadCap + 25;
 	let lifePowerUpCap = deathPowerUpCap + 10;
+	let fireBallCap = lifePowerUpCap + 20;
+	let iceBallCap = fireBallCap + 20
 
-	let randomNumber = random(lifePowerUpCap);
+	let randomNumber = random(iceBallCap);
 	if(balls.length > maxBallCount && randomNumber < 50){
-		randomNumber = random(threeBallsCap,lifePowerUpCap);
+		randomNumber = random(threeBallsCap,iceBallCap);
 	}
 
 	if(thePad.width >= 160*scale && randomNumber >= threeBallsCap && randomNumber < largePadCap){
@@ -864,13 +1014,17 @@ function randomPowerUp(x,y,length) {
 		powerUps[length] =  new smallPad(x,y);
 	} else if(randomNumber < deathPowerUpCap){
 		powerUps[length] =  new deathPowerUp(x,y);
-	} else {
+	} else if(randomNumber < lifePowerUpCap){
 		powerUps[length] =  new lifePowerUp(x,y);
+	} else if(randomNumber < fireBallCap){
+		powerUps[length] =  new fireBall(x,y);
+	} else {
+		powerUps[length] =  new iceBall(x,y);
 	}
 }
 
 function drawHeart(middleX,middleY){
-	fill(0,100,60);
+	fill(0,100,65);
 	let A = new p5.Vector(0, -4.5);
 	let B = new p5.Vector(4.7, -13.3);
 	let C = new p5.Vector(14.4, -2.3);
